@@ -47,9 +47,9 @@ def main():
         result = fit(
             X=X,
             y=y,
+            scoring='accuracy',
             population_size=8,
-            generations=3,
-            scoring='accuracy'
+            generations=3
         )
         
         print("\n=== Results ===")

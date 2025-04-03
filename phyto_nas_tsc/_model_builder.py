@@ -173,12 +173,13 @@ class LSTM(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         x, y = batch
-        y = torch.argmax(y, dim=1)
+        # Convert one-hot to class indices if needed
+        if y.dim() > 1 and y.size(1) > 1:
+            y = torch.argmax(y, dim=1)
         
         logits = self.forward(x)
         loss = self.loss_fn(logits, y)
         
-        # Add L2 regularization
         l2_lambda = 0.001
         l2_norm = sum(p.pow(2.0).sum() for p in self.parameters())
         loss = loss + l2_lambda * l2_norm
@@ -188,10 +189,13 @@ class LSTM(pl.LightningModule):
         self.log("train_acc", self.train_acc, prog_bar=True)
         return loss
 
+
     def validation_step(self, batch, batch_idx):
         x, y = batch
-        y = torch.argmax(y, dim=1)
-        
+        # Convert one-hot to class indices if needed
+        if y.dim() > 1 and y.size(1) > 1:
+            y = torch.argmax(y, dim=1)
+            
         logits = self.forward(x)
         loss = self.loss_fn(logits, y)
         
