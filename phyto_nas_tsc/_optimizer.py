@@ -19,8 +19,15 @@ class NASOptimizer:
         
     # This method is used to set the parameters for the optimizer
     def optimize(self, X: np.ndarray, y: np.ndarray) -> Dict[str, Any]:
-
-        nas = NASDifferentialEvolution(population_size=self.population_size, generations=self.generations, verbose=self.verbose, **self.others)
+        # filters out population_size and generations from self.others to avoid duplication
+        filtered_others = {k: v for k, v in self.others.items() if k not in ['population_size', 'generations']}
+        
+        nas = NASDifferentialEvolution(
+            population_size=self.population_size,
+            generations=self.generations,
+            verbose=self.verbose,
+            **filtered_others
+        )
         
         # runs optimization
         best_model = nas.evolve_and_check(X, y, input_size=X.shape[1])

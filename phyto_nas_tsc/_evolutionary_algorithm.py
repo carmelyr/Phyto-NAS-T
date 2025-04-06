@@ -302,7 +302,7 @@ class NASDifferentialEvolution:
                 mutant = self.mutate(parent1, parent2, parent3)
                 offspring = self.crossover(self.population[i], mutant)
                 
-                fitness, accuracy = self.cross_validate(offspring, X, y, input_size, generation)
+                fitness, accuracy, model_size, training_time = self.cross_validate(offspring, X, y, input_size, generation)
                 
                 if fitness > self.population[i].get('fitness', -float('inf')):
                     offspring['fitness'] = fitness
