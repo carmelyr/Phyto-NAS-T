@@ -1,29 +1,28 @@
 import numpy as np
 from typing import Dict, Any
 from phyto_nas_tsc._evolutionary_algorithm import NASDifferentialEvolution
-from ._model_builder import build_model
-from ._data_handler import DataHandler
-from ._utils import fitness_function, save_results_csv
+from ._config import population_size, generations
 
+# ---- Optimizer Class ---- #
+"""
+- it is a wrapper for the NASDifferentialEvolution class
+- it initializes the class with the given parameters
+- it provides a method to optimize the architecture
+"""
 class NASOptimizer:
-    def __init__(self, scoring='accuracy', population_size=15, generations=5, verbose=True, **others):
+    def __init__(self, scoring='accuracy', verbose=True, **others):
         self.scoring = scoring
         self.population_size = population_size
         self.generations = generations
         self.verbose = verbose
         self.others = others
         
+    # This method is used to set the parameters for the optimizer
     def optimize(self, X: np.ndarray, y: np.ndarray) -> Dict[str, Any]:
-        """Core optimization routine"""
-        # Initialize your evolutionary algorithm
-        nas = NASDifferentialEvolution(
-            population_size=self.population_size,
-            generations=self.generations,
-            verbose=self.verbose,
-            **self.others
-        )
+
+        nas = NASDifferentialEvolution(population_size=self.population_size, generations=self.generations, verbose=self.verbose, **self.others)
         
-        # Run optimization
+        # runs optimization
         best_model = nas.evolve_and_check(X, y, input_size=X.shape[1])
         
         return {
