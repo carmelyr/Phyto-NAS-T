@@ -2,8 +2,8 @@ import random
 import torch
 
 # Hyperparameters
-population_size = 5    # number of individuals in the population
-generations = 3
+population_size = 10    # number of individuals in the population
+generations = 5
 initial_F = 0.8       # Starting mutation factor
 final_F = 0.3         # Minimum mutation factor
 initial_CR = 0.9      # Starting crossover rate

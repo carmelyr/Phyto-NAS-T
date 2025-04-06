@@ -15,7 +15,7 @@ import csv
 import os
 
 class NASDifferentialEvolution:
-    def __init__(self, population_size=8, generations=3, verbose=True):
+    def __init__(self, population_size=8, generations=3, verbose=True, **others):
         self.population_size = population_size
         self.generations = generations
         self.population = self.initialize_population()
@@ -23,6 +23,10 @@ class NASDifferentialEvolution:
         self.best_model = None
         self.best_accuracy = 0.0
         self.verbose = verbose
+        self.others = others
+        self.timeout = others.get('timeout', None)  # None means no timeout
+        self.early_stopping = others.get('early_stopping', False)
+        self.max_iterations = others.get('max_iterations', 100)
         self.history = []
         self.initial_F = initial_F
         self.final_F = final_F
@@ -90,7 +94,7 @@ class NASDifferentialEvolution:
             population.append({
                 "model_type": "LSTM",
                 "hidden_units": random.choice([64, 128, 256, 512]),
-                "num_layers": random.choice([1, 2, 3, 4]),       
+                "num_layers": random.choice([1, 2, 3, 4, 5, 6, 7, 8]),       
                 "dropout_rate": random.uniform(0.1, 0.5),      
                 "bidirectional": random.choice([True, False]),
                 "attention": True,
@@ -286,7 +290,12 @@ class NASDifferentialEvolution:
                 print(f"\nGeneration {generation + 1} Best:")
                 print(f"Fitness: {self.population[0]['fitness']:.4f}")
                 print(f"Accuracy: {self.population[0]['accuracy']:.4f}")
-                print(f"Model: {self.population[0]}\n")
+                best_model = self.population[0].copy()
+                if 'fitness' in best_model:
+                    del best_model['fitness']
+                if 'accuracy' in best_model:
+                    del best_model['accuracy']
+                print(f"Model: {best_model}\n")
 
             # Early stopping if we reach target accuracy
             if self.population[0]['accuracy'] >= 0.9:

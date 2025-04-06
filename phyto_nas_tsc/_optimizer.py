@@ -6,12 +6,12 @@ from ._data_handler import DataHandler
 from ._utils import fitness_function, save_results_csv
 
 class NASOptimizer:
-    def __init__(self, scoring='accuracy', population_size=15, generations=5, verbose=True, **kwargs):
+    def __init__(self, scoring='accuracy', population_size=15, generations=5, verbose=True, **others):
         self.scoring = scoring
         self.population_size = population_size
         self.generations = generations
         self.verbose = verbose
-        self.kwargs = kwargs
+        self.others = others
         
     def optimize(self, X: np.ndarray, y: np.ndarray) -> Dict[str, Any]:
         """Core optimization routine"""
@@ -19,7 +19,8 @@ class NASOptimizer:
         nas = NASDifferentialEvolution(
             population_size=self.population_size,
             generations=self.generations,
-            verbose=self.verbose
+            verbose=self.verbose,
+            **self.others
         )
         
         # Run optimization
@@ -29,5 +30,6 @@ class NASOptimizer:
             'architecture': best_model,
             'accuracy': nas.best_accuracy,
             'fitness': nas.best_fitness,
-            'history': nas.history
+            'history': nas.history,
+            'parameters': {'population_size': self.population_size, 'generations': self.generations, **self.others}
         }

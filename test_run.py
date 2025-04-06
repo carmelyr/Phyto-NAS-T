@@ -48,13 +48,19 @@ def main():
             X=X,
             y=y,
             scoring='accuracy',
-            population_size=8,
-            generations=3
+            others={
+                'population_size': 5,
+                'generations': 3,
+                'timeout': 3600,
+                'early_stopping': True,
+                'max_iterations': 1000
+            }
         )
         
         print("\n=== Results ===")
         print(f"Best Accuracy: {result['accuracy']:.4f}")
         print(f"Model Config: {result['architecture']}")
+        print(f"Used Parameters: {result['parameters']}")
         
     except Exception as e:
         print(f"\nERROR: {str(e)}")

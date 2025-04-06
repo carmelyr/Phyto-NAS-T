@@ -6,7 +6,7 @@ def test_fit_function():
     X = np.random.rand(50, 5, 1)  # Smaller dataset for testing
     y = np.eye(2)[np.random.randint(0, 2, 50)]
     
-    result = fit(X, y, generations=1, population_size=2)
+    result = fit(X, y, generations=3, population_size=5)
     
     assert isinstance(result, dict)
     assert 'best_accuracy' in result
