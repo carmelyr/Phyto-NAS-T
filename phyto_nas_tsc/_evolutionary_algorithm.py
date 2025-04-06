@@ -5,7 +5,7 @@ from sklearn.model_selection import KFold
 from torch.utils.data import DataLoader, TensorDataset
 from ._model_builder import build_model
 from ._utils import fitness_function, save_results_csv
-from ._config import population_size, generations, initial_F, final_F, initial_CR, final_CR, decay_rate
+from ._config import initial_F, final_F, initial_CR, final_CR, decay_rate
 from pytorch_lightning.callbacks import EarlyStopping
 import random
 import time
@@ -27,8 +27,8 @@ import os
 """
 class NASDifferentialEvolution:
     def __init__(self, verbose=True, **others):
-        self.population_size = population_size
-        self.generations = generations
+        self.population_size = others.get('population_size', 10)
+        self.generations = others.get('generations', 5)
         self.population = self.initialize_population()
         self.initial_F = initial_F
         self.final_F = final_F
@@ -47,7 +47,7 @@ class NASDifferentialEvolution:
         self.max_iterations = others.get('max_iterations', 100)
 
         self.history = []
-        self.total_generations = generations
+        self.total_generations = self.generations
         self.run_id = self.get_next_run_id("evolution_results.csv")
 
     # This method is used to calculate the current mutation factor and crossover rate
