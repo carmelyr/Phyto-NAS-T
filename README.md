@@ -25,12 +25,32 @@ pip install -e .
 ```python
 import numpy as np
 from phyto_nas_tsc import fit
+# from importlib.resources import files             # uncomment to use built-in data
 
-# Synthetic data
-X = np.random.rand(100, 10, 1) 
-y = np.eye(2)[np.random.randint(0, 2, 100)]
+# OPTION 1: Use your own data
+X = np.random.randn(100, 1, 10)                     # 100 samples, 1 timestep, 10 features
+y = np.zeros((100, 2))                              # one-hot encoded labels
+y[:50, 0] = 1                                       # first 50 samples = class 0
+y[50:, 1] = 1                                       # next 50 samples = class 1
+
+# OPTION 2: Use built-in dataset (uncomment below)
+# data_dir = str(files('phyto_nas_tsc.data'))       # path to included data
+# X, y = None, None                                 # let the package load data automatically
 
 # Run optimization
-results = fit(X, y, generations=3, population_size=5)
-print(f"Best Architecture: {results['architecture']}")
+result = fit(
+    X=X,                                            # comment out if using built-in data
+    y=y,                                            # comment out if using built-in data
+    # data_dir=data_dir,                            # uncomment if using built-in data
+    others={
+        'population_size': 5,    # required
+        'generations': 3,        # required
+        'early_stopping': True   # optional
+    }
+)
+
+print(f"Best Accuracy: {result['accuracy']:.4f}")
+print("Best Architecture:")
+for param, value in result['architecture'].items():
+    print(f"  {param}: {value}")
 ```

@@ -30,5 +30,5 @@ class NASOptimizer:
             'accuracy': nas.best_accuracy,
             'fitness': nas.best_fitness,
             'history': nas.history,
-            'parameters': {'population_size': self.population_size, 'generations': self.generations, **self.others}
+            'parameters': self.others
         }

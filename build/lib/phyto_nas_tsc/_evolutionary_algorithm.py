@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from ._model_builder import build_model
 from ._utils import fitness_function, save_results_csv
 from ._config import initial_F, final_F, initial_CR, final_CR, decay_rate
+from pytorch_lightning.callbacks import EarlyStopping
 import random
 import time
 import traceback
@@ -14,47 +15,66 @@ import sys
 import csv
 import os
 
+# ---- Evolutionary Algorithm Class ---- #
+"""
+- This class implements a Differential Evolution algorithm for Neural Architecture Search (NAS).
+- initializes a population of models with random hyperparameters
+- evolves the population over a number of generations
+- uses mutation and crossover to create new models
+- evaluates the models using cross-validation
+- selects the best models based on a fitness function
+- saves the results to a CSV file
+"""
 class NASDifferentialEvolution:
-    def __init__(self, population_size=8, generations=3, verbose=True):
-        self.population_size = population_size
-        self.generations = generations
+    def __init__(self, verbose=True, **others):
+        self.population_size = others.get('population_size', 10)
+        self.generations = others.get('generations', 5)
         self.population = self.initialize_population()
-        self.best_fitness = -float('inf')
-        self.best_model = None
-        self.best_accuracy = 0.0
-        self.verbose = verbose
-        self.history = []
         self.initial_F = initial_F
         self.final_F = final_F
         self.initial_CR = initial_CR
         self.final_CR = final_CR
         self.decay_rate = decay_rate
-        self.total_generations = generations
+
+        self.best_fitness = -float('inf')
+        self.best_model = None
+        self.best_accuracy = 0.0
+
+        self.verbose = verbose
+        self.others = others
+        self.timeout = others.get('timeout', None)
+        self.early_stopping = others.get('early_stopping', False)
+        self.max_iterations = others.get('max_iterations', 100)
+
+        self.history = []
+        self.total_generations = self.generations
         self.run_id = self.get_next_run_id("evolution_results.csv")
 
+    # This method is used to calculate the current mutation factor and crossover rate
     def get_current_rates(self, generation):
-        """Calculate dynamic rates using hybrid strategy"""
-        # Hybrid mutation factor calculation
-        if generation < self.total_generations // 2:
-            # Exponential decay for first half
-            current_F = max(
-                self.final_F,
-                self.initial_F * (self.decay_rate ** generation)
-            )
-        else:
-            # Linear decay for second half
-            linear_progress = (generation - self.total_generations//2) / (self.total_generations//2)
-            current_F = self.initial_F - (self.initial_F - self.final_F) * linear_progress
 
-        # Linear crossover rate decay
-        current_CR = self.initial_CR - (self.initial_CR - self.final_CR) * (generation / self.total_generations)
+        # hybrid mutation factor calculation
+        if generation < self.total_generations // 2:
+            
+            # uses exponential decay for the first half of the generations
+            current_F = max(self.final_F, self.initial_F * (decay_rate ** generation))
+
+        else:
+            # uses linear decay for the second half of the generations
+            # calculates the linear progress from the midpoint to the end and interpolates the mutation factor
+            linear_progress = (generation - self.total_generations//2) / (self.total_generations//2)
+            current_F = initial_F - (initial_F - final_F) * linear_progress
+
+        # crossover rate calculation
+        current_CR = initial_CR - (initial_CR - final_CR) * (generation / self.total_generations)
         
         return current_F, current_CR
 
+    # This method is used to get the next run_id for the results file
     def get_next_run_id(self, results_file):
         """
-        Reads the last run_id from the results file and increments it.
-        If the file does not exist or is empty, starts with run_id = 1.
+        - reads the last run_id from the results file and increments it.
+        - if the file does not exist or is empty, it starts with run_id = 1.
         """
         if not os.path.exists(results_file):
             return 1
@@ -62,14 +82,16 @@ class NASDifferentialEvolution:
             with open(results_file, "r") as f:
                 reader = csv.reader(f)
                 rows = list(reader)
-                if len(rows) <= 1:  # Only header or empty file
+                if len(rows) <= 1:
                     return 1
-                last_run_id = int(rows[-1][0])  # First column is run_id
+                last_run_id = int(rows[-1][0])
                 return last_run_id + 1
+            
         except Exception as e:
             print(f"Error reading run_id from {results_file}: {e}")
             return 1
 
+    # This method is used to build the model based on the given configuration
     def build_model(self, model_config, X_train, y_train):
         return build_model(
             model_type=model_config["model_type"],
@@ -84,22 +106,26 @@ class NASDifferentialEvolution:
             weight_decay=model_config["weight_decay"]
         )
 
+    # This method is used to initialize the population with random hyperparameters
+    # Each individual in the population is a dictionary with hyperparameters
     def initialize_population(self):
         population = []
         for _ in range(self.population_size):
             population.append({
                 "model_type": "LSTM",
                 "hidden_units": random.choice([64, 128, 256, 512]),
-                "num_layers": random.choice([1, 2, 3, 4]),       
+                "num_layers": random.choice([1, 2, 3, 4, 5, 6, 7, 8]),       
                 "dropout_rate": random.uniform(0.1, 0.5),      
                 "bidirectional": random.choice([True, False]),
-                "attention": True,
                 "learning_rate": random.choice([1e-5, 1e-4, 1e-3, 3e-4, 5e-5]), 
                 "batch_size": random.choice([32, 64, 128]),
-                "weight_decay": random.choice([0, 1e-5, 5e-5]) 
+                "weight_decay": random.choice([0, 1e-5, 5e-5]),
+                "attention": random.choice([True, False]),
             })
         return population
 
+    # This method is used to mutate the parents to create a mutant
+    # it uses the Differential Evolution strategy to create a new individual
     def mutate(self, parent1, parent2, parent3, F=0.7):
         mutant = {
             "model_type": "LSTM",
@@ -107,13 +133,15 @@ class NASDifferentialEvolution:
             "num_layers": max(1, min(4, int(round(parent1["num_layers"] + F * (parent2["num_layers"] - parent3["num_layers"]))))),
             "dropout_rate": max(0.1, min(0.5, parent1["dropout_rate"] + F * (parent2["dropout_rate"] - parent3["dropout_rate"]))),
             "bidirectional": random.choice([parent1["bidirectional"], parent2["bidirectional"], parent3["bidirectional"]]),
-            "attention": True,
+            "attention": random.choice([parent1["attention"], parent2["attention"], parent3["attention"]]),
             "learning_rate": 10**(np.log10(parent1["learning_rate"]) + F * (np.log10(parent2["learning_rate"]) - np.log10(parent3["learning_rate"]))),
             "batch_size": random.choice([parent1["batch_size"], parent2["batch_size"], parent3["batch_size"]]),
             "weight_decay": random.choice([parent1["weight_decay"], parent2["weight_decay"], parent3["weight_decay"]])
         }
         return mutant
 
+    # This method is used to perform crossover between the parent and mutant
+    # it creates an offspring by combining the parent and mutant based on the crossover rate
     def crossover(self, parent, mutant, CR=0.85):
         offspring = parent.copy()
         for key in mutant:
@@ -121,6 +149,8 @@ class NASDifferentialEvolution:
                 offspring[key] = mutant[key]
         return offspring
     
+    # This method is used to evaluate the model using cross-validation
+    # it calculates the accuracy of the model on the validation set
     def evaluate_model(self, model, val_loader):
         model.eval()
         correct = 0
@@ -135,9 +165,12 @@ class NASDifferentialEvolution:
         accuracy = correct / total
         return accuracy
 
+    # This method is used to perform cross-validation on the model
+    # it splits the data into training and validation sets
     def cross_validate(self, model_config, X, y, input_size, generation):
-        from pytorch_lightning.callbacks import EarlyStopping
+
         kf = KFold(n_splits=5, shuffle=True, random_state=42)
+
         scores = []
         fold_accuracies = []
         model_sizes = []
@@ -201,7 +234,7 @@ class NASDifferentialEvolution:
                 model_size = sum(p.numel() for p in model.parameters() if p.requires_grad)
                 fitness = fitness_function("LSTM", val_acc, model_size, training_time)
 
-                print(f"Fold {fold+1} Accuracy: {val_acc:.4f}, Fitness: {fitness:.4f}, Size: {model_size}, Time: {training_time:.2f}s")
+                print(f"\nFold {fold+1} Accuracy: {val_acc:.4f}, Fitness: {fitness:.4f}, Size: {model_size}, Time: {training_time:.2f}s")
 
                 scores.append(fitness)
                 fold_accuracies.append(val_acc)
@@ -231,6 +264,7 @@ class NASDifferentialEvolution:
         if 'accuracy' in clean_config:
             del clean_config['accuracy']
 
+        # saves results to CSV
         save_results_csv(
             "evolution_results.csv",
             self.run_id,
@@ -245,17 +279,21 @@ class NASDifferentialEvolution:
 
         return avg_fitness, avg_accuracy, avg_model_size, avg_training_time
 
+    # This method is used to evolve the population over generations
+    # it selects parents, mutates them, performs crossover, and evaluates the offspring
+    # it updates the population with the best individuals
     def evolve_and_check(self, X, y, input_size):
         for generation in tqdm(range(self.generations), desc="Evolution Progress", file=sys.stdout, dynamic_ncols=True):
             new_population = []
             for i in range(self.population_size):
-                # Select 3 distinct parents
+                
                 candidates = [idx for idx in range(self.population_size) if idx != i]
 
                 if len(candidates) < 3:
                     new_population.append(self.population[i])
                     continue
 
+                # selects 3 random parents for mutation
                 parent1_idx, parent2_idx, parent3_idx = random.sample(candidates, 3)
                 parent1 = self.population[parent1_idx]
                 parent2 = self.population[parent2_idx]
@@ -264,8 +302,7 @@ class NASDifferentialEvolution:
                 mutant = self.mutate(parent1, parent2, parent3)
                 offspring = self.crossover(self.population[i], mutant)
                 
-                fitness, accuracy, model_size, training_time = self.cross_validate(
-                    offspring, X, y, input_size, generation)
+                fitness, accuracy, model_size, training_time = self.cross_validate(offspring, X, y, input_size, generation)
                 
                 if fitness > self.population[i].get('fitness', -float('inf')):
                     offspring['fitness'] = fitness
@@ -275,6 +312,7 @@ class NASDifferentialEvolution:
                     new_population.append(self.population[i])
 
             self.population = sorted(new_population, key=lambda x: x['fitness'], reverse=True)
+
             self.history.append({
                 'generation': generation + 1,
                 'best_fitness': self.population[0]['fitness'],
@@ -286,11 +324,11 @@ class NASDifferentialEvolution:
                 print(f"\nGeneration {generation + 1} Best:")
                 print(f"Fitness: {self.population[0]['fitness']:.4f}")
                 print(f"Accuracy: {self.population[0]['accuracy']:.4f}")
-                print(f"Model: {self.population[0]}\n")
-
-            # Early stopping if we reach target accuracy
-            if self.population[0]['accuracy'] >= 0.9:
-                print(f"\nTarget accuracy of 0.9 reached at generation {generation + 1}!")
-                break
+                best_model = self.population[0].copy()
+                if 'fitness' in best_model:
+                    del best_model['fitness']
+                if 'accuracy' in best_model:
+                    del best_model['accuracy']
+                print(f"Model: {best_model}\n")
 
         return self.population[0]

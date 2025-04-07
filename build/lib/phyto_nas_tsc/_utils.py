@@ -1,93 +1,9 @@
-import json
 import os
 from ._config import alpha, BETA
 import csv
 
-# ---- Save run results to a JSON file ---- #
-"""
-- filename: name of the JSON file that saves the run results
-- run_results: dictionary that contains where to save the run results
-"""
-def save_run_results_json(filename, run_results):
-    if os.path.exists(filename):
-        with open(filename, 'r') as file:
-            try:
-                data = json.load(file)
-            except json.JSONDecodeError:
-                data = []
-    else:
-        data = []
-
-    if data:
-        latest_run_id = max(run['run_id'] for run in data)
-        run_results['run_id'] = latest_run_id + 1
-    else:
-        run_results['run_id'] = 1
-
-    data.append(run_results)
-
-    with open(filename, 'w') as file:
-        json.dump(data, file, indent=4)
-
-
-# ---- Save accuracies to a JSON file ---- #
-def save_accuracies_json(filename, all_accuracies):
-    if os.path.exists(filename):
-        with open(filename, 'r') as file:
-            try:
-                data = json.load(file)
-                if not isinstance(data, list):
-                    data = []
-            except json.JSONDecodeError:
-                data = []
-    else:
-        data = []
-
-    # assigns run ID dynamically
-    if len(data) == 0:
-        run_id = 1
-    else:
-        run_id = max(run['run_id'] for run in data) + 1
-
-    # prepares data for the current run
-    run_data = {
-        "run_id": run_id,
-        "generations": [{"generation": i + 1, "accuracies": acc} for i, acc in enumerate(all_accuracies)]
-    }
-
-    # appends new data and save
-    data.append(run_data)
-    with open(filename, 'w') as file:
-        json.dump(data, file, indent=4)
-
-
-# ---- Save model sizes to a JSON file ---- #
-def save_model_sizes_json(filename, all_model_sizes):
-    if os.path.exists(filename):
-        with open(filename, 'r') as file:
-            try:
-                data = json.load(file)
-                if not isinstance(data, list):
-                    data = []
-            except json.JSONDecodeError:
-                data = []
-    else:
-        data = []
-
-    if len(data) == 0:
-        run_id = 1
-    else:
-        run_id = max(run['run_id'] for run in data) + 1
-
-    run_data = {
-        "run_id": run_id,
-        "generations": [{"generation": i + 1, "model_sizes": size} for i, size in enumerate(all_model_sizes)]
-    }
-
-    data.append(run_data)
-    with open(filename, 'w') as file:
-        json.dump(data, file, indent=4)
-
+# This function saves the results of the model training to a CSV file.
+# it appends the results to the file if it already exists, or creates a new file if it doesn't.
 def save_results_csv(filename, run_id, generation, architecture, layers, fold_accuracies, val_accuracy, model_size, runtime):
     file_exists = os.path.exists(filename)
     
@@ -101,26 +17,22 @@ def save_results_csv(filename, run_id, generation, architecture, layers, fold_ac
         # Write the new row with the provided run_id
         writer.writerow([run_id, generation, architecture, layers, fold_accuracies, val_accuracy, model_size, runtime])
 
+# This function calculates the fitness of a model based on its architecture, validation accuracy, model size, and training time.
 """
-- method that calculates the fitness score of the architecture based on its performance
-- architecture: architecture of the neural network
-- validation_accuracy: accuracy of the model on the validation set
-- generation: current generation of the evolutionary algorithm
-- max_generations: maximum number of generations for the evolutionary algorithm
-- model_size: size of the model (number of parameters)
-- training_time: time taken to train the model
-- size_penalty: reduces fitness for larger models (penalty scaled by alpha)
-- time_penalty: reduces fitness for longer training times (penalty scaled by BETA)
-- fitness: overall fitness score of the architecture
-- higher fitness -> better architecture
+- architecture: The architecture of the model (e.g., number of layers, types of layers).
+- validation_accuracy: The accuracy of the model on the validation set.
+- model_size: The size of the model in terms of number of parameters.
+- training_time: The time taken to train the model.
+- alpha: A hyperparameter that penalizes larger models.
+- BETA: A hyperparameter that penalizes longer training times.
+- fitness: The calculated fitness score of the model.
 """
 def fitness_function(architecture, validation_accuracy, model_size, training_time):
-    # More sophisticated fitness calculation
     accuracy_weight = 1.0
-    size_penalty = alpha * (model_size / 1e6)  # Scale to millions of parameters
-    time_penalty = BETA * (training_time / 60)  # Scale to minutes
+    size_penalty = alpha * (model_size / 1e6)   # scales the model size to millions of parameters
+    time_penalty = BETA * (training_time / 60)  # scales the training time to minutes
     
-    # Reward higher accuracy more aggressively
+    # squares the validation accuracy to emphasize its importance in the fitness score
     accuracy_score = validation_accuracy ** 2
     
     fitness = (accuracy_weight * accuracy_score) - size_penalty - time_penalty

@@ -42,10 +42,7 @@ def fit(X=None, y=None, scoring='accuracy', data_dir=None, others=None):
     
     optimizer = NASOptimizer(
         scoring=scoring,
-        population_size=population_size,
-        generations=generations,
-        **{k: v for k, v in others.items() 
-           if k not in ['population_size', 'generations']}
+        **others
     )
     result = optimizer.optimize(X, y)
    

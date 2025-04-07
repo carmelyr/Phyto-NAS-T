@@ -20,4 +20,9 @@ phyto_nas_tsc/data/X_train.csv
 phyto_nas_tsc/data/y_test.csv
 phyto_nas_tsc/data/y_train.csv
 tests/__init__.py
+tests/conftest.py
 tests/test_core.py
+tests/test_data_handler.py
+tests/test_evolutionary_algorithm.py
+tests/test_model_builder.py
+tests/test_utils.py
