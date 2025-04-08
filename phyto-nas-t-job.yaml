@@ -1,0 +1,70 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: carmely-phyto-nas-t-job
+
+spec:
+  completions: 1
+  parallelism: 1
+  template:
+    spec:
+      containers:
+      - name: carmely-phyto-nas-t-container
+        image: ccu-k8s.inf.uni-konstanz.de:32250/carmely.reiska/phyto-nas-t:latest
+
+        resources:
+          requests:
+            memory: "20Gi"
+            cpu: "8"
+          limits:
+            memory: "40Gi"
+            cpu: "16"
+            nvidia.com/gpu: "1"
+
+        volumeMounts:
+        - mountPath: /abyss/home
+          name: cephfs-home
+          readOnly: false
+        - mountPath: /abyss/shared
+          name: cephfs-shared
+          readOnly: false
+        - mountPath: /abyss/datasets
+          name: cephfs-datasets
+          readOnly: true
+
+        command: ["/bin/bash"]
+        args:
+          - -c
+          - >-
+            export POD_ID=${RUN_ID##*-} &&
+            mkdir -p /abyss/home/logs &&
+            cd /app &&
+            python run_kubernetes.py --population_size 5 --generations 3 --timeout 43200 --run_id $POD_ID &> /abyss/home/logs/log_phyto_nas_t_$POD_ID.txt
+
+        env:
+        - name: RUN_ID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+
+      volumes:
+      - name: cephfs-home
+        hostPath:
+          path: "/cephfs/abyss/home/carmely-reiska"
+          type: Directory
+      - name: cephfs-shared
+        hostPath:
+          path: "/cephfs/abyss/shared"
+          type: Directory
+      - name: cephfs-datasets
+        hostPath:
+          path: "/cephfs/abyss/datasets"
+          type: Directory
+
+      imagePullSecrets:
+      - name: registry-ro-login
+
+      restartPolicy: Never
+
+  backoffLimit: 10
+
