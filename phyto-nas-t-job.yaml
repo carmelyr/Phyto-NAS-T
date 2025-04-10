@@ -39,7 +39,8 @@ spec:
             export POD_ID=${RUN_ID##*-} &&
             mkdir -p /abyss/home/logs &&
             cd /app &&
-            python run_kubernetes.py --population_size 5 --generations 3 --timeout 43200 --run_id $POD_ID &> /abyss/home/logs/log_phyto_nas_t_$POD_ID.txt
+            python run_kubernetes.py --population_size 20 --generations 10 --timeout 43200 --run_id $POD_ID &> /abyss/home/logs/log_phyto_nas_t_$POD_ID.txt &&
+            sleep 3600
 
         env:
         - name: RUN_ID
