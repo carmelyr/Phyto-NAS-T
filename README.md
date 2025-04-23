@@ -42,6 +42,7 @@ result = fit(
     X=X,                                            # comment out if using built-in data
     y=y,                                            # comment out if using built-in data
     # data_dir=data_dir,                            # uncomment if using built-in data
+    scoring='accuracy',                             # metric to optimize 
     others={
         'population_size': 5,    # required
         'generations': 3,        # required
