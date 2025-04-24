@@ -1,28 +1,3 @@
-# Phyto-NAS-TSC
-
-An evolutionary approach to automatically design optimal neural network architectures for time series classification tasks.
-
-## Installation
-
-pip install phyto-nas-tsc
-
-## Installation directly from source
-
-git clone https://github.com/carmelyr/Phyto-NAS-T.git
-cd Phyto-NAS-T
-pip install -e .
-
-
-## Features
-
-- Evolutionary algorithm for architecture search
-- Optimized for time series data (1D signals)
-- Optimized for LSTM model
-- Tracks optimization history and metrics
-- GPU-accelerated training
-
-## Quickstart
-```python
 import numpy as np
 from phyto_nas_tsc import fit
 
@@ -35,9 +10,10 @@ from phyto_nas_tsc import fit
 # OPTION 2: Use built-in dataset                     # let the package load data automatically
 # Run optimization
 result = fit(
-    X=X,                                            # comment out if using built-in data
-    y=y,                                            # comment out if using built-in data
-    scoring='accuracy',                             # metric to optimize 
+    X=None,                                          # X is None, so the package will load data
+    y=None,                                
+    data_dir=None,                      
+    scoring='accuracy',                                
     others={
         'population_size': 5,    # required
         'generations': 3,        # required
@@ -49,4 +25,3 @@ print(f"Best Accuracy: {result['accuracy']:.4f}")
 print("Best Architecture:")
 for param, value in result['architecture'].items():
     print(f"  {param}: {value}")
-```

@@ -26,10 +26,9 @@ def fit(X=None, y=None, scoring='accuracy', data_dir=None, others=None):
         raise ValueError("population_size must be at least 3 for evolution")
     
     # loads data from file if X and y are not provided and data_dir is None
+    # data_dir=None triggers package data
     if X is None or y is None:
-        if data_dir is None:
-            data_dir = files('phyto_nas_tsc.data')      # use package data if no data_dir provided
-        handler = DataHandler(data_dir)
+        handler = DataHandler(data_dir=data_dir)
         handler.load_and_preprocess()
         X = handler.X_analysis
         y = handler.y_analysis

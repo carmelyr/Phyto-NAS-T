@@ -6,6 +6,8 @@ from torch.utils.data import TensorDataset, DataLoader
 import numpy as np
 from pathlib import Path
 from typing import Optional
+from importlib.resources import files
+import io
 
 __all__ = ['DataHandler', 'validate_inputs']
 
@@ -13,7 +15,7 @@ class DataHandler:
     def __init__(self, data_dir: Optional[str] = None):
 
         # default data_dir is 'classification_ozone' if dataset is not provided
-        self.data_dir = Path(data_dir) if data_dir else Path('classification_ozone')
+        self.data_dir = data_dir
         self.X_analysis = None
         self.y_analysis = None
         self.X_test = None
@@ -22,11 +24,23 @@ class DataHandler:
         self.encoder = OneHotEncoder(sparse_output=False)
         
     def load_and_preprocess(self):
-        # loads and preprocesses the data
-        self.X_analysis = pd.read_csv(self.data_dir/'X_train.csv')
-        self.y_analysis = pd.read_csv(self.data_dir/'y_train.csv')
-        self.X_test = pd.read_csv(self.data_dir/'X_test.csv')
-        self.y_test = pd.read_csv(self.data_dir/'y_test.csv')
+        # if data_dir is None, uses built-in package data
+        if self.data_dir is None:
+            # loads data from package resources
+            with files('phyto_nas_tsc.data').joinpath('X_train.csv').open('r') as f:
+                self.X_analysis = pd.read_csv(f)
+            with files('phyto_nas_tsc.data').joinpath('y_train.csv').open('r') as f:
+                self.y_analysis = pd.read_csv(f)
+            with files('phyto_nas_tsc.data').joinpath('X_test.csv').open('r') as f:
+                self.X_test = pd.read_csv(f)
+            with files('phyto_nas_tsc.data').joinpath('y_test.csv').open('r') as f:
+                self.y_test = pd.read_csv(f)
+        else:
+            data_path = Path(self.data_dir)
+            self.X_analysis = pd.read_csv(data_path/'X_train.csv')
+            self.y_analysis = pd.read_csv(data_path/'y_train.csv')
+            self.X_test = pd.read_csv(data_path/'X_test.csv')
+            self.y_test = pd.read_csv(data_path/'y_test.csv')
 
         # preprocessing: fill missing values with column-wise mean
         self.X_analysis.fillna(self.X_analysis.mean(), inplace=True)
