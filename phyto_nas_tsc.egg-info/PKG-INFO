@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: phyto_nas_tsc
-Version: 0.1.7
+Version: 0.1.8
 Summary: Phyto Neural Architecture Search for Time Series Classification
 Home-page: https://github.com/carmelyr/Phyto-NAS-T
 Author: Carmely Reiska
@@ -42,9 +42,11 @@ An evolutionary approach to automatically design optimal neural network architec
 pip install phyto-nas-tsc
 
 ## Installation directly from source
+
 git clone https://github.com/carmelyr/Phyto-NAS-T.git
 cd Phyto-NAS-T
 pip install -e .
+
 
 ## Features
 
@@ -68,10 +70,9 @@ from phyto_nas_tsc import fit
 # OPTION 2: Use built-in dataset                     # let the package load data automatically
 # Run optimization
 result = fit(
-    X=None,                                          # X is None, so the package will load data
-    y=None,                                
-    data_dir=None,                      
-    scoring='accuracy',                                
+    X=X,                                            # comment out if using built-in data
+    y=y,                                            # comment out if using built-in data
+    scoring='accuracy',                             # metric to optimize 
     others={
         'population_size': 5,    # required
         'generations': 3,        # required

@@ -126,15 +126,15 @@ class NASDifferentialEvolution:
 
     # This method is used to mutate the parents to create a mutant
     # it uses the Differential Evolution strategy to create a new individual
-    def mutate(self, parent1, parent2, parent3, F=0.7):
+    def mutate(self, parent1, parent2, parent3, current_F):
         mutant = {
             "model_type": "LSTM",
-            "hidden_units": max(64, min(512, int(parent1["hidden_units"] + F * (parent2["hidden_units"] - parent3["hidden_units"])))),
-            "num_layers": max(1, min(4, int(round(parent1["num_layers"] + F * (parent2["num_layers"] - parent3["num_layers"]))))),
-            "dropout_rate": max(0.1, min(0.5, parent1["dropout_rate"] + F * (parent2["dropout_rate"] - parent3["dropout_rate"]))),
+            "hidden_units": max(64, min(512, int(parent1["hidden_units"] + current_F * (parent2["hidden_units"] - parent3["hidden_units"])))),
+            "num_layers": max(1, min(4, int(round(parent1["num_layers"] + current_F * (parent2["num_layers"] - parent3["num_layers"]))))),
+            "dropout_rate": max(0.1, min(0.5, parent1["dropout_rate"] + current_F * (parent2["dropout_rate"] - parent3["dropout_rate"]))),
             "bidirectional": random.choice([parent1["bidirectional"], parent2["bidirectional"], parent3["bidirectional"]]),
             "attention": random.choice([parent1["attention"], parent2["attention"], parent3["attention"]]),
-            "learning_rate": 10**(np.log10(parent1["learning_rate"]) + F * (np.log10(parent2["learning_rate"]) - np.log10(parent3["learning_rate"]))),
+            "learning_rate": 10**(np.log10(parent1["learning_rate"]) + current_F * (np.log10(parent2["learning_rate"]) - np.log10(parent3["learning_rate"]))),
             "batch_size": random.choice([parent1["batch_size"], parent2["batch_size"], parent3["batch_size"]]),
             "weight_decay": random.choice([parent1["weight_decay"], parent2["weight_decay"], parent3["weight_decay"]])
         }
@@ -142,10 +142,10 @@ class NASDifferentialEvolution:
 
     # This method is used to perform crossover between the parent and mutant
     # it creates an offspring by combining the parent and mutant based on the crossover rate
-    def crossover(self, parent, mutant, CR=0.85):
+    def crossover(self, parent, mutant, current_CR):
         offspring = parent.copy()
         for key in mutant:
-            if random.random() < CR:
+            if random.random() < current_CR:
                 offspring[key] = mutant[key]
         return offspring
     
@@ -285,25 +285,27 @@ class NASDifferentialEvolution:
     def evolve_and_check(self, X, y, input_size):
         for generation in tqdm(range(self.generations), desc="Evolution Progress", file=sys.stdout, dynamic_ncols=True):
             new_population = []
+            current_F, current_CR = self.get_current_rates(generation)
+
             for i in range(self.population_size):
-                
                 candidates = [idx for idx in range(self.population_size) if idx != i]
 
                 if len(candidates) < 3:
                     new_population.append(self.population[i])
                     continue
 
-                # selects 3 random parents for mutation
+                # Selects 3 random parents for mutation
                 parent1_idx, parent2_idx, parent3_idx = random.sample(candidates, 3)
                 parent1 = self.population[parent1_idx]
                 parent2 = self.population[parent2_idx]
                 parent3 = self.population[parent3_idx]
-                
-                mutant = self.mutate(parent1, parent2, parent3)
-                offspring = self.crossover(self.population[i], mutant)
-                
+
+                # Pass current_F to the mutate method
+                mutant = self.mutate(parent1, parent2, parent3, current_F)
+                offspring = self.crossover(self.population[i], mutant, current_CR)
+
                 fitness, accuracy, model_size, training_time = self.cross_validate(offspring, X, y, input_size, generation)
-                
+
                 if fitness > self.population[i].get('fitness', -float('inf')):
                     offspring['fitness'] = fitness
                     offspring['accuracy'] = accuracy
